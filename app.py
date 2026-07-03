@@ -15,28 +15,23 @@ st.markdown("""
         font-weight: bold !important;
         font-size: 16px !important;
     }
+    /* 스트림릿 기본 사이드바 화살표 버튼을 완전히 숨겨버리는 CSS 코드 */
+    [data-testid="collapsedControl"] {
+        display: none;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-with st.sidebar:
-    st.header("데이터 연동")
-    sheet_url = "https://docs.google.com/spreadsheets/d/1khi9F-BUQOv2HYgJWIaWLIHhwV15MyHhxSrw_6JtK4E/edit?gid=0#gid=0"
-    st.success("구글 시트와 실시간 연동되어 있습니다.")
-    st.divider()
-    uploaded_file = st.file_uploader("(선택) 수동 업로드 (xls, xlsx, csv)", type=['xlsx', 'xls', 'csv'])
+# 3. ⭐️ 사이드바 완전 삭제 및 구글 시트 주소 코드 내장(하드코딩)
+sheet_url = "https://docs.google.com/spreadsheets/d/1khi9F-BUQOv2HYgJWIaWLIHhwV15MyHhxSrw_6JtK4E/edit?gid=0#gid=0"
 
 df = None
 try:
-    if uploaded_file is not None:
-        if uploaded_file.name.endswith('.csv'): df = pd.read_csv(uploaded_file)
-        elif uploaded_file.name.endswith('.xls'): df = pd.read_excel(uploaded_file, engine='xlrd')
-        else: df = pd.read_excel(uploaded_file)
-    elif sheet_url:
-        match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
-        if match:
-            sheet_id = match.group(1)
-            csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-            df = pd.read_csv(csv_url)
+    match = re.search(r'/d/([a-zA-Z0-9-_]+)', sheet_url)
+    if match:
+        sheet_id = match.group(1)
+        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
+        df = pd.read_csv(csv_url)
 except Exception as e:
     st.error(f"데이터 로딩 오류: {e}")
 
@@ -56,7 +51,7 @@ if df is not None and not df.empty:
         temp_date = df['정산일시'].fillna(df.get('출차일시')).fillna(df.get('입차일시'))
         df['정산월'] = temp_date.dt.strftime('%Y-%m')
         df['정산년도'] = temp_date.dt.strftime('%Y')
-        df['순수월'] = temp_date.dt.strftime('%m') # '05' 등의 형태
+        df['순수월'] = temp_date.dt.strftime('%m') 
         df = df.dropna(subset=['정산월']) 
         
     if '출차일시' in df.columns and '입차일시' in df.columns:
@@ -84,7 +79,6 @@ if df is not None and not df.empty:
     if '현금수입' in df.columns: df.rename(columns={'현금수입': '현금'}, inplace=True)
     if '카드수입' in df.columns: df.rename(columns={'카드수입': '카드'}, inplace=True)
 
-    # 3. ⭐️ 컴퓨터 현재 날짜 기준으로 드롭박스 초기 리스트 세팅
     now = datetime.now()
     current_year = str(now.year)
     current_month = f"{now.month}월"
@@ -102,7 +96,6 @@ if df is not None and not df.empty:
     idx_year = get_index(year_list, current_year)
     idx_month = get_index(month_list, current_month)
 
-    # 6 & 7. ⭐️ 탭 번호 삭제 및 이름 변경
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["정산", "웹할인", "무료주차", "통 계", "차량조회"])
     
     # ------------------------------------
@@ -113,12 +106,10 @@ if df is not None and not df.empty:
         with col_title:
             st.subheader("정산 요약")
         with col_f1:
-            # 1. 첫번째 박스: 전체/2026년/2027년/...
             opts1 = ["전체"] + [f"{y}년" for y in year_list]
             idx1 = get_index(opts1, f"{current_year}년")
             s_year_label = st.selectbox("연도 선택", opts1, index=idx1, key="s_year", label_visibility="collapsed")
         with col_f2:
-            # 1. 두번째 박스: 첫번째가 전체일때 비활성화
             opts2 = ["전체"] + month_list
             idx2 = get_index(opts2, current_month)
             if s_year_label == "전체":
@@ -129,36 +120,34 @@ if df is not None and not df.empty:
 
         req_cols = ['주차요금', '웹할인', '무료주차', '카드', '현금']
         if all(c in df.columns for c in req_cols) and not df.empty:
+            
+            # 🚨 인터넷 서버(스트림릿 클라우드) 최신 버전에 맞춘 에러 방지용 안전한 집계 로직
+            agg_funcs = {col: 'sum' for col in req_cols}
+            agg_funcs['차량번호'] = 'count'
+            
             if s_year_label == "전체":
-                monthly_summary = df.groupby('정산년도').agg(
-                    주차대수=('차량번호', 'count'), **{col: 'sum' for col in req_cols}
-                ).reset_index()
-                monthly_summary.rename(columns={'정산년도': '기간'}, inplace=True)
+                monthly_summary = df.groupby('정산년도').agg(agg_funcs).reset_index()
+                monthly_summary.rename(columns={'정산년도': '기간', '차량번호': '주차대수'}, inplace=True)
                 monthly_summary['기간'] = monthly_summary['기간'] + "년"
             else:
                 s_year_val = s_year_label.replace("년", "")
                 filtered_df = df[df['정산년도'] == s_year_val]
                 if s_month_label == "전체":
                     if not filtered_df.empty:
-                        monthly_summary = filtered_df.groupby('정산월').agg(
-                            주차대수=('차량번호', 'count'), **{col: 'sum' for col in req_cols}
-                        ).reset_index()
-                        monthly_summary.rename(columns={'정산월': '기간'}, inplace=True)
+                        monthly_summary = filtered_df.groupby('정산월').agg(agg_funcs).reset_index()
+                        monthly_summary.rename(columns={'정산월': '기간', '차량번호': '주차대수'}, inplace=True)
                     else:
                         monthly_summary = pd.DataFrame(columns=['기간', '주차대수'] + req_cols)
                 else:
                     m_val = s_month_label.replace("월", "").zfill(2)
                     filtered_df = filtered_df[filtered_df['순수월'] == m_val]
                     if not filtered_df.empty:
-                        monthly_summary = filtered_df.groupby('정산월').agg(
-                            주차대수=('차량번호', 'count'), **{col: 'sum' for col in req_cols}
-                        ).reset_index()
-                        monthly_summary.rename(columns={'정산월': '기간'}, inplace=True)
+                        monthly_summary = filtered_df.groupby('정산월').agg(agg_funcs).reset_index()
+                        monthly_summary.rename(columns={'정산월': '기간', '차량번호': '주차대수'}, inplace=True)
                     else:
                         monthly_summary = pd.DataFrame(columns=['기간', '주차대수'] + req_cols)
             
             if not monthly_summary.empty:
-                # 4. ⭐️ 기간과 주차요금 사이에 주차대수 표시
                 display_cols = ['기간', '주차대수', '주차요금', '웹할인', '무료주차', '카드', '현금']
                 final_table = monthly_summary[display_cols].sort_values(by='기간', ascending=False)
                 
@@ -170,23 +159,21 @@ if df is not None and not df.empty:
                         '주차대수': '{:,.0f}대', '주차요금': '{:,.0f}원', '웹할인': '{:,.0f}원', 
                         '무료주차': '{:,.0f}원', '카드': '{:,.0f}원', '현금': '{:,.0f}원'
                     }),
-                    hide_index=True
+                    hide_index=True, use_container_width=True
                 )
             else:
                 st.info("해당 기간의 정산 데이터가 없습니다.")
 
     # ------------------------------------
-    # [탭 2] 웹할인 (8번 반영: 사용내역/구매내역 분리)
+    # [탭 2] 웹할인 
     # ------------------------------------
     with tab2:
         col_title2, col_empty2, col_f3, col_f4 = st.columns([5, 2, 1.5, 1.5])
         with col_title2:
             st.subheader("웹할인 현황")
         with col_f3:
-            # 2. 첫번째: 2026/2027...
             w_year = st.selectbox("연도 선택", year_list, index=idx_year, key="w_year", label_visibility="collapsed")
         with col_f4:
-            # 2. 두번째: 전체/1월/2월...
             opts2_w = ["전체"] + month_list
             idx2_w = get_index(opts2_w, current_month)
             w_month = st.selectbox("월별 선택", opts2_w, index=idx2_w, key="w_month", label_visibility="collapsed")
@@ -204,13 +191,13 @@ if df is not None and not df.empty:
                     st.markdown(f"<div style='font-size: 16px; font-weight: normal; color: #1E90FF; margin-bottom: 10px;'>선택기간 사용내역 총액: {total_web:,.0f}원 (총 {len(web_cars)}건)</div>", unsafe_allow_html=True)
                     cols_w = ['차량번호', '입차일시', '출차일시', '주차요금', '웹할인', '요금종별']
                     cols_w = [c for c in cols_w if c in web_cars.columns]
-                    st.dataframe(web_cars[cols_w].sort_values('입차일시', ascending=False).style.format({'주차요금': '{:,.0f}원', '웹할인': '{:,.0f}원'}), hide_index=True)
+                    st.dataframe(web_cars[cols_w].sort_values('입차일시', ascending=False).style.format({'주차요금': '{:,.0f}원', '웹할인': '{:,.0f}원'}), hide_index=True, use_container_width=True)
 
             with sub_tab2:
                 st.info("현재 구매내역 데이터가 비어 있습니다.")
 
     # ------------------------------------
-    # [탭 3] 무료주차 (9번 반영: 무료주차/강제출차 통합)
+    # [탭 3] 무료주차 
     # ------------------------------------
     with tab3:
         col_title3, col_empty3, col_f5, col_f6 = st.columns([5, 2, 1.5, 1.5])
@@ -236,7 +223,7 @@ if df is not None and not df.empty:
                     st.markdown(f"<div style='font-size: 16px; font-weight: normal; color: #FF4500; margin-bottom: 10px;'>선택기간 무료주차 총액: {total_free:,.0f}원 (총 {len(free_cars)}건)</div>", unsafe_allow_html=True)
                     cols_f = ['차량번호', '입차일시', '출차일시', '주차요금', '무료주차', '요금종별']
                     cols_f = [c for c in cols_f if c in free_cars.columns]
-                    st.dataframe(free_cars[cols_f].sort_values('입차일시', ascending=False).style.format({'주차요금': '{:,.0f}원', '무료주차': '{:,.0f}원'}), hide_index=True)
+                    st.dataframe(free_cars[cols_f].sort_values('입차일시', ascending=False).style.format({'주차요금': '{:,.0f}원', '무료주차': '{:,.0f}원'}), hide_index=True, use_container_width=True)
 
             with sub_tab4:
                 mask = f_filtered_df.astype(str).apply(lambda x: x.str.contains('강제출차', na=False)).any(axis=1)
@@ -245,17 +232,15 @@ if df is not None and not df.empty:
                 if not forced_exit.empty:
                     cols3 = ['차량번호', '입차일시', '출차일시', '주차요금', '요금종별', '메모']
                     cols3 = [c for c in cols3 if c in df.columns]
-                    st.dataframe(forced_exit[cols3].sort_values('입차일시', ascending=False), hide_index=True)
+                    st.dataframe(forced_exit[cols3].sort_values('입차일시', ascending=False), hide_index=True, use_container_width=True)
 
     # ------------------------------------
     # [탭 4] 통 계
     # ------------------------------------
     with tab4:
-        # 5. ⭐️ 시간대별 위에 "최근 1년간 월별 주차대수" 꺾은선 그래프 추가
         st.subheader("📊 월별 주차대수 (최근 1년)")
         if not df.empty and '정산월' in df.columns:
             try:
-                # 오늘을 기준으로 최근 12개월 월별 데이터 도출
                 valid_months = []
                 now_date = datetime.now()
                 for i in range(12):
@@ -273,7 +258,7 @@ if df is not None and not df.empty:
                     line_m = base_m.mark_line(color='#ff7f0e', strokeWidth=3, point=True).encode(y=alt.Y('차량수', title='월별 차량대수 (대)'))
                     text_m = base_m.mark_text(align='center', baseline='bottom', dy=-15, fontSize=12, fontWeight='bold', color='#333').encode(y='차량수', text='주차대수')
                     
-                    st.altair_chart((line_m + text_m).properties(height=300))
+                    st.altair_chart((line_m + text_m).properties(height=300), use_container_width=True)
                 else:
                     st.info("최근 1년간의 데이터가 없습니다.")
             except:
@@ -281,7 +266,6 @@ if df is not None and not df.empty:
                 
         st.divider()
 
-        # 기존 시간대별 차트
         col_title4, col_empty4, col_f7, col_f8 = st.columns([5, 2, 1.5, 1.5])
         with col_title4:
             st.subheader("📈 시간대별 주차대수")
@@ -324,7 +308,6 @@ if df is not None and not df.empty:
                 })
                 chart_data['주차대수'] = chart_data['차량수'].astype(str) + "대"
                 
-                # 5. ⭐️ 불필요한 툴팁 삭제 및 숫자만 직관적으로 보이게 수정
                 base = alt.Chart(chart_data).encode(
                     x=alt.X('시간대', sort=None, axis=alt.Axis(labelAngle=0, title=None)),
                     tooltip=alt.value(None)
@@ -332,7 +315,7 @@ if df is not None and not df.empty:
                 line = base.mark_line(color='#1f77b4', strokeWidth=3, point=True).encode(y=alt.Y('차량수', title='하루 평균 차량대수 (대)'))
                 text = base.mark_text(align='center', baseline='bottom', dy=-15, fontSize=12, fontWeight='bold', color='#333333').encode(y='차량수', text='주차대수')
                 
-                st.altair_chart((line + text).properties(height=350))
+                st.altair_chart((line + text).properties(height=350), use_container_width=True)
                 st.caption(f"선택한 기간({period_str}) 동안 각 시간대(0시~23시)에 주차장에 머문 하루 평균 차량 대수입니다. (총 {days_count}일 기준)")
             else:
                 st.info("데이터가 부족하여 그래프를 그릴 수 없습니다.")
@@ -351,13 +334,13 @@ if df is not None and not df.empty:
                     st.write("월별 누적 주차시간")
                     monthly_time = result.groupby('정산월')['주차시간(분)'].sum().reset_index()
                     monthly_time['총 주차시간'] = monthly_time['주차시간(분)'].apply(lambda x: f"{int(x//60)}시간 {int(x%60)}분")
-                    st.dataframe(monthly_time[['정산월', '총 주차시간']], hide_index=True)
+                    st.dataframe(monthly_time[['정산월', '총 주차시간']], hide_index=True, use_container_width=True)
                 with col2:
                     st.write("상세 입출차 내역")
                     cols = ['차량번호', '입차일시', '출차일시', '주차요금', '요금종별']
                     cols = [c for c in cols if c in result.columns]
-                    st.dataframe(result[cols].sort_values('입차일시', ascending=False), hide_index=True)
+                    st.dataframe(result[cols].sort_values('입차일시', ascending=False), hide_index=True, use_container_width=True)
             else:
                 st.warning("검색된 차량이 없습니다.")
 else:
-    st.info("어플을 시작하려면 왼쪽 사이드바에 구글 시트 링크를 넣거나 파일을 업로드해주세요.")
+    st.info("구글 시트에서 데이터를 불러올 수 없습니다.")
