@@ -230,6 +230,7 @@ if df is not None and not df.empty:
                                 
                                 # 병합하여 하나의 표로 만들기
                                 final_pur_table = pd.merge(sum_pur, last_bal_df, on='이름', how='left')
+                                final_pur_table = final_pur_table[final_pur_table['결제금액'] > 0]
                                 final_pur_table.rename(columns={'이름': '업체명', '결제금액': f'{w_month} 총 결제금액', '결제후잔여량': '결제후 잔여량'}, inplace=True)
                                 
                                 total_pay = final_pur_table[f'{w_month} 총 결제금액'].sum()

@@ -910,7 +910,13 @@
         byCompany[r.이름].잔여량 = r.결제후잔여량;
       });
 
-      const purTable = Object.values(byCompany).sort((a, b) => b.총결제금액 - a.총결제금액);
+      const purTable = Object.values(byCompany)
+        .filter(r => r.총결제금액 > 0)
+        .sort((a, b) => b.총결제금액 - a.총결제금액);
+      if (purTable.length === 0) {
+        sub2.innerHTML = `<div class="alert-box alert-info">${year}년 ${monthLabel}의 구매내역 데이터가 없습니다.</div>`;
+        return;
+      }
       const totalPay = purTable.reduce((acc, r) => acc + r.총결제금액, 0);
 
       let html2 = `<div class="summary-banner" style="color: var(--green);">선택기간 구매 결제 총액: ${fmtWon(totalPay)}</div>`;
