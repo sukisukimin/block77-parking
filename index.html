@@ -93,7 +93,7 @@
       background: none;
       border: none;
       padding: 10px 4px;
-      font-size: 16px;
+      font-size: 17.5px;
       font-weight: 700;
       color: var(--text-sub);
       cursor: pointer;
@@ -243,8 +243,9 @@
     }
 
     .summary-banner {
-      font-size: 16px;
-      font-weight: 500;
+      font-size: 16.5px;
+      font-weight: 700;
+      color: #e03131;
       margin-bottom: 12px;
     }
 
@@ -871,7 +872,7 @@
         .sort((a, b) => (b.입차일시_dt?.getTime() || 0) - (a.입차일시_dt?.getTime() || 0));
 
       const totalWeb = webCars.reduce((acc, r) => acc + r.웹할인, 0);
-      let html1 = `<div class="summary-banner" style="color: var(--blue);">선택기간 사용내역 총액: ${fmtWon(totalWeb)} (총 ${webCars.length}건)</div>`;
+      let html1 = `<div class="summary-banner">선택기간 사용내역 총액: ${fmtWon(totalWeb)} (총 ${webCars.length}건)</div>`;
       html1 += `<div class="table-wrap"><table><thead><tr>
         <th>차량번호</th><th>입차일시</th><th>출차일시</th>
         <th class="num-col">주차요금</th><th class="num-col">웹할인</th>
@@ -929,7 +930,7 @@
       }
       const totalPay = purTable.reduce((acc, r) => acc + r.총결제금액, 0);
 
-      let html2 = `<div class="summary-banner" style="color: var(--green);">선택기간 구매 결제 총액: ${fmtWon(totalPay)}</div>`;
+      let html2 = `<div class="summary-banner">선택기간 구매 결제 총액: ${fmtWon(totalPay)}</div>`;
       html2 += `<div class="table-wrap"><table><thead><tr>
         <th>업체명</th>
         <th class="num-col">${monthLabel} 총 결제금액</th>
@@ -960,7 +961,7 @@
         .sort((a, b) => (b.입차일시_dt?.getTime() || 0) - (a.입차일시_dt?.getTime() || 0));
 
       const totalFree = freeCars.reduce((acc, r) => acc + r.무료주차, 0);
-      let html3 = `<div class="summary-banner" style="color: var(--orange);">선택기간 무료주차 총액: ${fmtWon(totalFree)} (총 ${freeCars.length}건)</div>`;
+      let html3 = `<div class="summary-banner">선택기간 무료주차 총액: ${fmtWon(totalFree)} (총 ${freeCars.length}건)</div>`;
       html3 += `<div class="table-wrap"><table><thead><tr>
         <th>차량번호</th><th>입차일시</th><th>출차일시</th>
         <th class="num-col">무료주차</th>

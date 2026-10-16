@@ -13,7 +13,7 @@ st.markdown("""
 <style>
     button[data-baseweb="tab"] p {
         font-weight: bold !important;
-        font-size: 16px !important;
+        font-size: 17.5px !important;
     }
     [data-testid="collapsedControl"] {
         display: none;
@@ -198,7 +198,7 @@ if df is not None and not df.empty:
                 if '요금종별' in df.columns:
                     web_cars = w_filtered_df[(w_filtered_df['요금종별'].astype(str).str.contains('웹할인')) & (~w_filtered_df['요금종별'].astype(str).str.contains('완전무료'))]
                     total_web = web_cars['웹할인'].sum()
-                    st.markdown(f"<div style='font-size: 16px; font-weight: normal; color: #1E90FF; margin-bottom: 10px;'>선택기간 사용내역 총액: {total_web:,.0f}원 (총 {len(web_cars)}건)</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='font-size: 16.5px; font-weight: bold; color: #e03131; margin-bottom: 10px;'>선택기간 사용내역 총액: {total_web:,.0f}원 (총 {len(web_cars)}건)</div>", unsafe_allow_html=True)
                     
                     cols_w = ['차량번호', '입차일시', '출차일시', '주차요금', '웹할인', '요금종별', '메모']
                     cols_w = [c for c in cols_w if c in df.columns]
@@ -237,7 +237,7 @@ if df is not None and not df.empty:
                                 final_pur_table.rename(columns={'이름': '업체명', '결제금액': f'{w_month} 총 결제금액', '결제후잔여량': '결제후 잔여량'}, inplace=True)
                                 
                                 total_pay = final_pur_table[f'{w_month} 총 결제금액'].sum()
-                                st.markdown(f"<div style='font-size: 16px; font-weight: normal; color: #2E8B57; margin-bottom: 10px;'>선택기간 구매 결제 총액: {total_pay:,.0f}원</div>", unsafe_allow_html=True)
+                                st.markdown(f"<div style='font-size: 16.5px; font-weight: bold; color: #e03131; margin-bottom: 10px;'>선택기간 구매 결제 총액: {total_pay:,.0f}원</div>", unsafe_allow_html=True)
                                 
                                 st.dataframe(
                                     final_pur_table.sort_values(by=f'{w_month} 총 결제금액', ascending=False).style.format({
@@ -278,7 +278,7 @@ if df is not None and not df.empty:
                 if '요금종별' in df.columns:
                     free_cars = f_filtered_df[f_filtered_df['요금종별'].astype(str).str.contains('완전무료', na=False)]
                     total_free = free_cars['무료주차'].sum()
-                    st.markdown(f"<div style='font-size: 16px; font-weight: normal; color: #FF4500; margin-bottom: 10px;'>선택기간 무료주차 총액: {total_free:,.0f}원 (총 {len(free_cars)}건)</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='font-size: 16.5px; font-weight: bold; color: #e03131; margin-bottom: 10px;'>선택기간 무료주차 총액: {total_free:,.0f}원 (총 {len(free_cars)}건)</div>", unsafe_allow_html=True)
                     
                     cols_f = ['차량번호', '입차일시', '출차일시', '무료주차', '요금종별', '메모']
                     cols_f = [c for c in cols_f if c in df.columns]
@@ -287,7 +287,7 @@ if df is not None and not df.empty:
             with sub_tab4:
                 mask = f_filtered_df.astype(str).apply(lambda x: x.str.contains('강제출차', na=False)).any(axis=1)
                 forced_exit = f_filtered_df[mask]
-                st.markdown(f"<div style='font-size: 16px; font-weight: normal; margin-bottom: 10px;'>선택기간 강제출차 총 {len(forced_exit)}건의 기록이 있습니다.</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 16.5px; font-weight: bold; color: #e03131; margin-bottom: 10px;'>선택기간 강제출차 총 {len(forced_exit)}건의 기록이 있습니다.</div>", unsafe_allow_html=True)
                 if not forced_exit.empty:
                     cols3 = ['차량번호', '입차일시', '출차일시', '주차요금', '요금종별', '메모']
                     cols3 = [c for c in cols3 if c in df.columns]
