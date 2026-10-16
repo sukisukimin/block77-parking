@@ -71,8 +71,8 @@ if df is not None and not df.empty:
     for col in ['입차일시', '출차일시', '정산일시']:
         if col in df.columns: df[col] = pd.to_datetime(df[col], errors='coerce')
         
-    if '정산일시' in df.columns:
-        temp_date = df['정산일시'].fillna(df.get('출차일시')).fillna(df.get('입차일시'))
+    if '입차일시' in df.columns:
+        temp_date = df['입차일시'].fillna(df.get('출차일시')).fillna(df.get('정산일시'))
         df['정산월'] = temp_date.dt.strftime('%Y-%m')
         df['정산년도'] = temp_date.dt.strftime('%Y')
         df['순수월'] = temp_date.dt.strftime('%m') 

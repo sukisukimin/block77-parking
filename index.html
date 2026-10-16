@@ -644,7 +644,7 @@
         const inDt = parseDate(r["입차일시"]);
         const outDt = parseDate(r["출차일시"]);
         const setDt = parseDate(r["정산일시"]);
-        const tempDate = setDt || outDt || inDt;
+        const tempDate = inDt || outDt || setDt;
         if (!tempDate) continue;
 
         const year = String(tempDate.getFullYear());
