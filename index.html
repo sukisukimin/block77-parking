@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BLOCK77 주차관리</title>
+  <!-- PapaParse for ultra-fast CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- Chart.js + DataLabels plugin for statistics charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <style>
+    :root {
+      --primary: #ff4b4b;
+      --blue: #1E90FF;
+      --green: #2E8B57;
+      --orange: #FF4500;
+      --border: #e5e7eb;
+      --bg-soft: #f8fafc;
+      --text-main: #1f2937;
+      --text-sub: #6b7280;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", sans-serif;
+      color: var(--text-main);
+      background-color: #ffffff;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+
+    /* Header */
+    .header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .header-bar h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .status-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.875rem;
+      color: var(--text-sub);
+    }
+
+    .btn-refresh {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      color: #374151;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-refresh:hover {
+      background: #e5e7eb;
+    }
+
+    /* Main Tabs & Sub Tabs */
+    .tabs {
+      display: flex;
+      gap: 24px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 10px 4px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-sub);
+      cursor: pointer;
+      position: relative;
+      white-space: nowrap;
+      transition: color 0.15s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+    }
+
+    .tab-btn.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -2px;
+      height: 3px;
+      background-color: var(--primary);
+      border-radius: 2px;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* Section Header with Right Selectboxes */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .section-header h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+    }
+
+    .filters {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    select, input[type="text"] {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      background-color: #fff;
+      color: var(--text-main);
+      min-width: 120px;
+      outline: none;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(255, 75, 75, 0.15);
+    }
+
+    /* Tables */
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      max-height: 620px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      text-align: left;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background-color: var(--bg-soft);
+      color: #374151;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      z-index: 1;
+    }
+
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover {
+      background-color: #f8fafc;
+    }
+
+    .num-col {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .highlight-fee {
+      background-color: #fff3cd !important;
+      color: #856404 !important;
+      font-weight: 700 !important;
+    }
+
+    /* Info / Warning boxes */
+    .alert-box {
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-top: 8px;
+    }
+
+    .alert-info {
+      background-color: #eff6ff;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+
+    .alert-warn {
+      background-color: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef08a;
+    }
+
+    .alert-error {
+      background-color: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .summary-banner {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 32px 0;
+    }
+
+    .chart-box {
+      position: relative;
+      height: 330px;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    .chart-caption {
+      font-size: 0.875rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+    }
+
+    /* Search Layout */
+    .search-input-wrap {
+      margin-bottom: 18px;
+    }
+
+    .search-input-wrap label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--text-sub);
+      margin-bottom: 6px;
+    }
+
+    .search-input-wrap input {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .grid-1-2 {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .grid-1-2 {
+        grid-template-columns: 1fr;
+      }
+      .container {
+        padding: 16px 12px 40px;
+      }
+    }
+
+    /* Loading Overlay */
+    #loading-view {
+      padding: 48px 20px;
+      text-align: center;
+      color: var(--text-sub);
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 4px solid #e5e7eb;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin: 0 auto 14px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-bar">
+      <h1>BLOCK77 주차관리</h1>
+      <div class="status-area">
+        <span id="last-updated">데이터 불러오는 중...</span>
+        <button class="btn-refresh" onclick="loadAllData(true)">🔄 새로고침</button>
+      </div>
+    </div>
+
+    <div id="loading-view">
+      <div class="spinner"></div>
+      <div>구글 시트 실시간 데이터를 불러오고 있습니다...</div>
+    </div>
+
+    <div id="error-view" style="display:none;"></div>
+
+    <div id="app-view" style="display:none;">
+      <!-- Main Navigation Tabs -->
+      <div class="tabs" id="main-tabs">
+        <button class="tab-btn active" data-tab="tab1">정산</button>
+        <button class="tab-btn" data-tab="tab2">웹할인</button>
+        <button class="tab-btn" data-tab="tab3">무료주차</button>
+        <button class="tab-btn" data-tab="tab4">통 계</button>
+        <button class="tab-btn" data-tab="tab5">차량조회</button>
+      </div>
+
+      <!-- [탭 1] 정산 -->
+      <div class="tab-panel active" id="tab1">
+        <div class="section-header">
+          <h2>정산 요약</h2>
+          <div class="filters">
+            <select id="s_year" onchange="renderTab1()"></select>
+          </div>
+        </div>
+        <div id="tab1-content"></div>
+      </div>
+
+      <!-- [탭 2] 웹할인 -->
+      <div class="tab-panel" id="tab2">
+        <div class="section-header">
+          <h2>웹할인 현황</h2>
+          <div class="filters">
+            <select id="w_year" onchange="renderTab2()"></select>
+            <select id="w_month" onchange="renderTab2()"></select>
+          </div>
+        </div>
+
+        <div class="tabs" id="sub-tabs-web">
+          <button class="tab-btn active" data-subtab="sub_tab1">사용내역</button>
+          <button class="tab-btn" data-subtab="sub_tab2">구매내역</button>
+        </div>
+
+        <div class="tab-panel active" id="sub_tab1"></div>
+        <div class="tab-panel" id="sub_tab2"></div>
+      </div>
+
+      <!-- [탭 3] 무료주차 -->
+      <div class="tab-panel" id="tab3">
+        <div class="section-header">
+          <h2>무료주차 및 강제출차 현황</h2>
+          <div class="filters">
+            <select id="f_year" onchange="renderTab3()"></select>
+            <select id="f_month" onchange="renderTab3()"></select>
+          </div>
+        </div>
+
+        <div class="tabs" id="sub-tabs-free">
+          <button class="tab-btn active" data-subtab="sub_tab3">무료주차</button>
+          <button class="tab-btn" data-subtab="sub_tab4">강제출차</button>
+        </div>
+
+        <div class="tab-panel active" id="sub_tab3"></div>
+        <div class="tab-panel" id="sub_tab4"></div>
+      </div>
+
+      <!-- [탭 4] 통 계 -->
+      <div class="tab-panel" id="tab4">
+        <div class="section-header">
+          <h2>📊 월별 주차대수</h2>
+          <div class="filters">
+            <select id="stat_m_year" onchange="renderTab4Monthly()"></select>
+          </div>
+        </div>
+        <div id="tab4-monthly-msg"></div>
+        <div class="chart-box" id="chart-monthly-wrap">
+          <canvas id="chartMonthly"></canvas>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-header">
+          <h2>📈 시간대별 주차대수</h2>
+          <div class="filters">
+            <select id="t4_y" onchange="renderTab4Hourly()"></select>
+            <select id="t4_m" onchange="renderTab4Hourly()"></select>
+          </div>
+        </div>
+        <div id="tab4-hourly-msg"></div>
+        <div class="chart-box" id="chart-hourly-wrap" style="height: 360px;">
+          <canvas id="chartHourly"></canvas>
+        </div>
+        <div class="chart-caption" id="chart-hourly-caption"></div>
+      </div>
+
+      <!-- [탭 5] 차량조회 -->
+      <div class="tab-panel" id="tab5">
+        <div class="section-header">
+          <h2>차량 번호 검색</h2>
+        </div>
+        <div class="search-input-wrap">
+          <label for="search_car">차량번호 4자리를 입력하세요</label>
+          <input type="text" id="search_car" placeholder="예: 2908" oninput="renderTab5()" />
+        </div>
+        <div id="tab5-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    Chart.register(ChartDataLabels);
+
+    const SHEET_ID = "1khi9F-BUQOv2HYgJWIaWLIHhwV15MyHhxSrw_6JtK4E";
+    const MAIN_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1`;
+    const PUR_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent("웹할인 구매내역")}`;
+
+    let mainRows = [];
+    let purRows = [];
+    let chartMonthlyInstance = null;
+    let chartHourlyInstance = null;
+
+    // 탭 전환 이벤트 설정
+    function setupTabs(containerId, panelSelectorScope) {
+      const container = document.getElementById(containerId);
+      const buttons = container.querySelectorAll(".tab-btn");
+      buttons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          buttons.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+
+          const targetId = btn.dataset.tab || btn.dataset.subtab;
+          const panels = panelSelectorScope.querySelectorAll(":scope > .tab-panel");
+          panels.forEach(p => {
+            p.classList.toggle("active", p.id === targetId);
+          });
+
+          if (targetId === "tab4") {
+            renderTab4Monthly();
+            renderTab4Hourly();
+          }
+        });
+      });
+    }
+
+    setupTabs("main-tabs", document.getElementById("app-view"));
+    setupTabs("sub-tabs-web", document.getElementById("tab2"));
+    setupTabs("sub-tabs-free", document.getElementById("tab3"));
+
+    // 숫자 파싱 (콤마/통화기호 제거)
+    function parseNum(val) {
+      if (val === null || val === undefined || val === "") return 0;
+      if (typeof val === "number") return isNaN(val) ? 0 : val;
+      const cleaned = String(val).replace(/[^\d\-.]/g, "");
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? 0 : num;
+    }
+
+    // 날짜 파싱 ("Date(2026,4,31,21,9,0)", "2026-05-31 21:09:00" 등 지원)
+    function parseDate(val) {
+      if (!val) return null;
+      if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+      const s = String(val).trim();
+      if (!s) return null;
+
+      // Google gviz Date(yyyy, m0, d, h, m, s) 형식
+      const dm = s.match(/^Date\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+))?\)/);
+      if (dm) {
+        return new Date(
+          parseInt(dm[1], 10),
+          parseInt(dm[2], 10),
+          parseInt(dm[3], 10),
+          dm[4] ? parseInt(dm[4], 10) : 0,
+          dm[5] ? parseInt(dm[5], 10) : 0,
+          dm[6] ? parseInt(dm[6], 10) : 0
+        );
+      }
+
+      // YYYY-MM-DD HH:mm(:ss) 표준 형식 빠른 파싱
+      const m = s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+      if (m) {
+        const year = parseInt(m[1], 10);
+        const month = parseInt(m[2], 10) - 1;
+        const day = parseInt(m[3], 10);
+        const hour = m[4] ? parseInt(m[4], 10) : 0;
+        const min = m[5] ? parseInt(m[5], 10) : 0;
+        const sec = m[6] ? parseInt(m[6], 10) : 0;
+        return new Date(year, month, day, hour, min, sec);
+      }
+
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function formatDateTime(d) {
+      if (!d) return "";
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      const ss = String(d.getSeconds()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+    }
+
+    function formatDateKey(d) {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function fmtWon(n) {
+      return Math.round(n).toLocaleString("ko-KR") + "원";
+    }
+
+    function fmtNum(n) {
+      return Math.round(n).toLocaleString("ko-KR");
+    }
+
+    // 로컬(file://) 및 웹(https://) 어디서든 CORS 제한 없이 동작하는 JSONP 로더
+    function fetchSheetJsonp(sheetName) {
+      return new Promise((resolve, reject) => {
+        const cbName = "_gviz_cb_" + Math.random().toString(36).slice(2) + "_" + Date.now();
+        const script = document.createElement("script");
+        let url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=responseHandler:${cbName}&headers=1&_t=${Date.now()}`;
+        if (sheetName) {
+          url += `&sheet=${encodeURIComponent(sheetName)}`;
+        }
+
+        const cleanup = () => {
+          delete window[cbName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        };
+
+        window[cbName] = (res) => {
+          cleanup();
+          if (!res || res.status === "error" || !res.table) {
+            reject(new Error(res?.errors?.[0]?.detailed_message || "시트 데이터를 읽을 수 없습니다."));
+            return;
+          }
+          const cols = res.table.cols.map(c => (c.label || c.id || "").trim());
+          const rows = (res.table.rows || []).map(rowObj => {
+            const item = {};
+            const cells = rowObj.c || [];
+            for (let i = 0; i < cols.length; i++) {
+              const colName = cols[i];
+              if (!colName) continue;
+              const cell = cells[i];
+              if (!cell || (cell.v === null && cell.f === undefined)) {
+                item[colName] = "";
+              } else {
+                item[colName] = cell.v !== null && cell.v !== undefined ? cell.v : cell.f;
+              }
+            }
+            return item;
+          });
+          resolve(rows);
+        };
+
+        script.onerror = () => {
+          cleanup();
+          reject(new Error("네트워크 연결 또는 구글 시트 접근 권한을 확인해주세요."));
+        };
+
+        script.src = url;
+        document.head.appendChild(script);
+      });
+    }
+
+    async function loadAllData(isManual = false) {
+      const loadingEl = document.getElementById("loading-view");
+      const errorEl = document.getElementById("error-view");
+      const appEl = document.getElementById("app-view");
+      const updatedEl = document.getElementById("last-updated");
+
+      if (isManual) {
+        updatedEl.textContent = "새로고침 중...";
+      }
+
+      try {
+        const [rawMain, rawPur] = await Promise.all([
+          fetchSheetJsonp(null),
+          fetchSheetJsonp("웹할인 구매내역").catch(() => [])
+        ]);
+
+        processMainData(rawMain);
+        processPurData(rawPur);
+
+        initFilters();
+        renderAll();
+
+        loadingEl.style.display = "none";
+        errorEl.style.display = "none";
+        appEl.style.display = "block";
+
+        const now = new Date();
+        updatedEl.textContent = `업데이트: ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+      } catch (err) {
+        loadingEl.style.display = "none";
+        errorEl.style.display = "block";
+        errorEl.innerHTML = `<div class="alert-box alert-error">데이터 로딩 오류: ${err.message || err}</div>`;
+      }
+    }
+
+    function processMainData(raw) {
+      mainRows = [];
+      for (let i = 0; i < raw.length; i++) {
+        const r = raw[i];
+        if (!r["입차일시"] || String(r["입차일시"]).trim() === "") continue;
+
+        const inDt = parseDate(r["입차일시"]);
+        const outDt = parseDate(r["출차일시"]);
+        const setDt = parseDate(r["정산일시"]);
+        const tempDate = setDt || outDt || inDt;
+        if (!tempDate) continue;
+
+        const year = String(tempDate.getFullYear());
+        const month = String(tempDate.getMonth() + 1).padStart(2, "0");
+        const yearMonth = `${year}-${month}`;
+
+        const fee = parseNum(r["주차요금"]);
+        const cash = parseNum(r["현금수입"] !== undefined ? r["현금수입"] : r["현금"]);
+        const card = parseNum(r["카드수입"] !== undefined ? r["카드수입"] : r["카드"]);
+        const feeType = r["요금종별"] ? String(r["요금종별"]).trim() : "";
+        const memo = r["메모"] ? String(r["메모"]).trim() : "";
+        const carNo = r["차량번호"] !== undefined && r["차량번호"] !== null ? String(r["차량번호"]).trim() : "";
+
+        // 주차시간(분)
+        let durationMin = 0;
+        if (inDt && outDt) {
+          durationMin = (outDt.getTime() - inDt.getTime()) / 60000;
+          if (isNaN(durationMin)) durationMin = 0;
+        }
+
+        // 웹할인 및 무료주차 추출 (app.py extract_discounts 동일 로직)
+        let webDiscount = 0;
+        let freeParking = 0;
+        if (feeType.includes("웹할인")) {
+          if (feeType.includes("완전무료")) {
+            freeParking = fee;
+          } else {
+            const m = feeType.match(/웹할인\s*\(\s*([\d,]+)/);
+            if (m) {
+              webDiscount = parseFloat(m[1].replace(/,/g, "")) || 0;
+            }
+          }
+        }
+
+        // 강제출차 여부 (전체 열 문자열 검사)
+        let isForcedExit = false;
+        for (const k in r) {
+          if (r[k] && String(r[k]).includes("강제출차")) {
+            isForcedExit = true;
+            break;
+          }
+        }
+
+        mainRows.push({
+          차량번호: carNo,
+          입차일시_dt: inDt,
+          출차일시_dt: outDt,
+          입차일시: inDt ? formatDateTime(inDt) : String(r["입차일시"] || ""),
+          출차일시: outDt ? formatDateTime(outDt) : String(r["출차일시"] || ""),
+          주차요금: fee,
+          현금: cash,
+          카드: card,
+          웹할인: webDiscount,
+          무료주차: freeParking,
+          요금종별: feeType,
+          메모: memo,
+          정산월: yearMonth,
+          정산년도: year,
+          순수월: month,
+          주차시간_분: durationMin,
+          강제출차여부: isForcedExit
+        });
+      }
+    }
+
+    function processPurData(raw) {
+      purRows = [];
+      for (let i = 0; i < raw.length; i++) {
+        const r = raw[i];
+        const payDt = parseDate(r["결제일자"]);
+        if (!payDt) continue;
+
+        const year = String(payDt.getFullYear());
+        const month = String(payDt.getMonth() + 1).padStart(2, "0");
+
+        purRows.push({
+          이름: r["이름"] !== undefined && r["이름"] !== null ? String(r["이름"]).trim() : "",
+          결제일자_dt: payDt,
+          결제월: `${year}-${month}`,
+          결제금액: parseNum(r["결제금액"]),
+          결제후잔여량: parseNum(r["결제후잔여량"]),
+          _idx: i
+        });
+      }
+    }
+
+    function populateSelect(id, options, selectedValue) {
+      const sel = document.getElementById(id);
+      const prevVal = sel.value;
+      sel.innerHTML = "";
+      options.forEach(opt => {
+        const o = document.createElement("option");
+        o.value = opt.value;
+        o.textContent = opt.label;
+        sel.appendChild(o);
+      });
+      if (prevVal && options.some(o => o.value === prevVal)) {
+        sel.value = prevVal;
+      } else if (selectedValue !== undefined) {
+        sel.value = selectedValue;
+      }
+    }
+
+    function initFilters() {
+      const yearsSet = new Set(mainRows.map(r => r.정산년도));
+      const yearList = Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+
+      const now = new Date();
+      let recentYear = yearList.length > 0 ? yearList[0] : String(now.getFullYear());
+      let maxMonthNum = 1;
+
+      if (yearList.length > 0) {
+        const monthsInRecentYear = mainRows
+          .filter(r => r.정산년도 === recentYear)
+          .map(r => parseInt(r.순수월, 10))
+          .filter(n => !isNaN(n));
+        if (monthsInRecentYear.length > 0) {
+          maxMonthNum = Math.max(...monthsInRecentYear);
+        }
+      } else {
+        maxMonthNum = now.getMonth() + 1;
+      }
+
+      const yearOpts = yearList.map(y => ({ value: y, label: `${y}년` }));
+      const monthOpts = Array.from({ length: 12 }, (_, i) => ({
+        value: String(i + 1).padStart(2, "0"),
+        label: `${i + 1}월`
+      }));
+      const monthOptsWithAll = [{ value: "전체", label: "전체" }, ...monthOpts];
+      const defaultMonthVal = String(maxMonthNum).padStart(2, "0");
+
+      ["s_year", "w_year", "f_year", "stat_m_year", "t4_y"].forEach(id => {
+        populateSelect(id, yearOpts, recentYear);
+      });
+      ["w_month", "f_month"].forEach(id => {
+        populateSelect(id, monthOpts, defaultMonthVal);
+      });
+      populateSelect("t4_m", monthOptsWithAll, defaultMonthVal);
+    }
+
+    function renderAll() {
+      renderTab1();
+      renderTab2();
+      renderTab3();
+      renderTab4Monthly();
+      renderTab4Hourly();
+      renderTab5();
+    }
+
+    // [탭 1] 정산 요약
+    function renderTab1() {
+      const year = document.getElementById("s_year").value;
+      const container = document.getElementById("tab1-content");
+      const filtered = mainRows.filter(r => r.정산년도 === year);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="alert-box alert-info">해당 연도의 정산 데이터가 없습니다.</div>`;
+        return;
+      }
+
+      const grouped = {};
+      filtered.forEach(r => {
+        const m = r.정산월;
+        if (!grouped[m]) {
+          grouped[m] = { 기간: m, 주차대수: 0, 주차요금: 0, 웹할인: 0, 무료주차: 0, 카드: 0, 현금: 0 };
+        }
+        if (r.차량번호 !== "") grouped[m].주차대수 += 1;
+        grouped[m].주차요금 += r.주차요금;
+        grouped[m].웹할인 += r.웹할인;
+        grouped[m].무료주차 += r.무료주차;
+        grouped[m].카드 += r.카드;
+        grouped[m].현금 += r.현금;
+      });
+
+      const list = Object.values(grouped).sort((a, b) => b.기간.localeCompare(a.기간));
+
+      let html = `<div class="table-wrap"><table><thead><tr>
+        <th>기간</th>
+        <th class="num-col">주차대수</th>
+        <th class="num-col">주차요금</th>
+        <th class="num-col">웹할인</th>
+        <th class="num-col">무료주차</th>
+        <th class="num-col">카드</th>
+        <th class="num-col">현금</th>
+      </tr></thead><tbody>`;
+
+      list.forEach(row => {
+        html += `<tr>
+          <td>${row.기간}</td>
+          <td class="num-col">${fmtNum(row.주차대수)}대</td>
+          <td class="num-col highlight-fee">${fmtWon(row.주차요금)}</td>
+          <td class="num-col">${fmtWon(row.웹할인)}</td>
+          <td class="num-col">${fmtWon(row.무료주차)}</td>
+          <td class="num-col">${fmtWon(row.카드)}</td>
+          <td class="num-col">${fmtWon(row.현금)}</td>
+        </tr>`;
+      });
+
+      html += `</tbody></table></div>`;
+      container.innerHTML = html;
+    }
+
+    // [탭 2] 웹할인 현황
+    function renderTab2() {
+      const year = document.getElementById("w_year").value;
+      const month = document.getElementById("w_month").value;
+      const monthLabel = `${parseInt(month, 10)}월`;
+      const targetMonth = `${year}-${month}`;
+
+      // 1) 사용내역
+      const sub1 = document.getElementById("sub_tab1");
+      const webCars = mainRows
+        .filter(r => r.정산월 === targetMonth && r.요금종별.includes("웹할인") && !r.요금종별.includes("완전무료"))
+        .sort((a, b) => (b.입차일시_dt?.getTime() || 0) - (a.입차일시_dt?.getTime() || 0));
+
+      const totalWeb = webCars.reduce((acc, r) => acc + r.웹할인, 0);
+      let html1 = `<div class="summary-banner" style="color: var(--blue);">선택기간 사용내역 총액: ${fmtWon(totalWeb)} (총 ${webCars.length}건)</div>`;
+      html1 += `<div class="table-wrap"><table><thead><tr>
+        <th>차량번호</th><th>입차일시</th><th>출차일시</th>
+        <th class="num-col">주차요금</th><th class="num-col">웹할인</th>
+        <th>요금종별</th><th>메모</th>
+      </tr></thead><tbody>`;
+
+      webCars.forEach(r => {
+        html1 += `<tr>
+          <td>${r.차량번호}</td>
+          <td>${r.입차일시}</td>
+          <td>${r.출차일시}</td>
+          <td class="num-col">${fmtWon(r.주차요금)}</td>
+          <td class="num-col">${fmtWon(r.웹할인)}</td>
+          <td>${r.요금종별}</td>
+          <td>${r.메모}</td>
+        </tr>`;
+      });
+      html1 += `</tbody></table></div>`;
+      sub1.innerHTML = html1;
+
+      // 2) 구매내역
+      const sub2 = document.getElementById("sub_tab2");
+      if (!purRows || purRows.length === 0) {
+        sub2.innerHTML = `<div class="alert-box alert-info">구글 시트의 '웹할인 구매내역' 시트가 비어있거나 제목이 다릅니다.</div>`;
+        return;
+      }
+
+      const purFiltered = purRows.filter(r => r.결제월 === targetMonth);
+      if (purFiltered.length === 0) {
+        sub2.innerHTML = `<div class="alert-box alert-info">${year}년 ${monthLabel}의 구매내역 데이터가 없습니다.</div>`;
+        return;
+      }
+
+      // 결제일자 오름차순 정렬 후 업체별 합계 및 마지막 잔여량 계산
+      const sortedByDate = [...purFiltered].sort((a, b) => {
+        const diff = a.결제일자_dt.getTime() - b.결제일자_dt.getTime();
+        return diff !== 0 ? diff : a._idx - b._idx;
+      });
+
+      const byCompany = {};
+      sortedByDate.forEach(r => {
+        if (!byCompany[r.이름]) {
+          byCompany[r.이름] = { 업체명: r.이름, 총결제금액: 0, 잔여량: 0 };
+        }
+        byCompany[r.이름].총결제금액 += r.결제금액;
+        byCompany[r.이름].잔여량 = r.결제후잔여량;
+      });
+
+      const purTable = Object.values(byCompany).sort((a, b) => b.총결제금액 - a.총결제금액);
+      const totalPay = purTable.reduce((acc, r) => acc + r.총결제금액, 0);
+
+      let html2 = `<div class="summary-banner" style="color: var(--green);">선택기간 구매 결제 총액: ${fmtWon(totalPay)}</div>`;
+      html2 += `<div class="table-wrap"><table><thead><tr>
+        <th>업체명</th>
+        <th class="num-col">${monthLabel} 총 결제금액</th>
+        <th class="num-col">결제후 잔여량</th>
+      </tr></thead><tbody>`;
+
+      purTable.forEach(r => {
+        html2 += `<tr>
+          <td>${r.업체명}</td>
+          <td class="num-col">${fmtWon(r.총결제금액)}</td>
+          <td class="num-col">${fmtNum(r.잔여량)}</td>
+        </tr>`;
+      });
+      html2 += `</tbody></table></div>`;
+      sub2.innerHTML = html2;
+    }
+
+    // [탭 3] 무료주차 및 강제출차 현황
+    function renderTab3() {
+      const year = document.getElementById("f_year").value;
+      const month = document.getElementById("f_month").value;
+      const filtered = mainRows.filter(r => r.정산년도 === year && r.순수월 === month);
+
+      // 1) 무료주차
+      const sub3 = document.getElementById("sub_tab3");
+      const freeCars = filtered
+        .filter(r => r.요금종별.includes("완전무료"))
+        .sort((a, b) => (b.입차일시_dt?.getTime() || 0) - (a.입차일시_dt?.getTime() || 0));
+
+      const totalFree = freeCars.reduce((acc, r) => acc + r.무료주차, 0);
+      let html3 = `<div class="summary-banner" style="color: var(--orange);">선택기간 무료주차 총액: ${fmtWon(totalFree)} (총 ${freeCars.length}건)</div>`;
+      html3 += `<div class="table-wrap"><table><thead><tr>
+        <th>차량번호</th><th>입차일시</th><th>출차일시</th>
+        <th class="num-col">주차요금</th><th class="num-col">무료주차</th>
+        <th>요금종별</th><th>메모</th>
+      </tr></thead><tbody>`;
+
+      freeCars.forEach(r => {
+        html3 += `<tr>
+          <td>${r.차량번호}</td>
+          <td>${r.입차일시}</td>
+          <td>${r.출차일시}</td>
+          <td class="num-col">${fmtWon(r.주차요금)}</td>
+          <td class="num-col">${fmtWon(r.무료주차)}</td>
+          <td>${r.요금종별}</td>
+          <td>${r.메모}</td>
+        </tr>`;
+      });
+      html3 += `</tbody></table></div>`;
+      sub3.innerHTML = html3;
+
+      // 2) 강제출차
+      const sub4 = document.getElementById("sub_tab4");
+      const forcedCars = filtered
+        .filter(r => r.강제출차여부)
+        .sort((a, b) => (b.입차일시_dt?.getTime() || 0) - (a.입차일시_dt?.getTime() || 0));
+
+      let html4 = `<div class="summary-banner">선택기간 강제출차 총 ${forcedCars.length}건의 기록이 있습니다.</div>`;
+      if (forcedCars.length > 0) {
+        html4 += `<div class="table-wrap"><table><thead><tr>
+          <th>차량번호</th><th>입차일시</th><th>출차일시</th>
+          <th class="num-col">주차요금</th><th>요금종별</th><th>메모</th>
+        </tr></thead><tbody>`;
+        forcedCars.forEach(r => {
+          html4 += `<tr>
+            <td>${r.차량번호}</td>
+            <td>${r.입차일시}</td>
+            <td>${r.출차일시}</td>
+            <td class="num-col">${fmtWon(r.주차요금)}</td>
+            <td>${r.요금종별}</td>
+            <td>${r.메모}</td>
+          </tr>`;
+        });
+        html4 += `</tbody></table></div>`;
+      }
+      sub4.innerHTML = html4;
+    }
+
+    // [탭 4 - 상단] 월별 주차대수 차트
+    function renderTab4Monthly() {
+      const year = document.getElementById("stat_m_year").value;
+      const msgEl = document.getElementById("tab4-monthly-msg");
+      const wrapEl = document.getElementById("chart-monthly-wrap");
+
+      const filtered = mainRows.filter(r => r.정산년도 === year);
+      if (filtered.length === 0) {
+        wrapEl.style.display = "none";
+        msgEl.innerHTML = `<div class="alert-box alert-info">${year}년의 데이터가 없습니다.</div>`;
+        return;
+      }
+
+      const countsByMonth = {};
+      filtered.forEach(r => {
+        countsByMonth[r.정산월] = (countsByMonth[r.정산월] || 0) + 1;
+      });
+
+      const labels = Object.keys(countsByMonth).sort();
+      const values = labels.map(k => countsByMonth[k]);
+
+      msgEl.innerHTML = "";
+      wrapEl.style.display = "block";
+
+      if (chartMonthlyInstance) chartMonthlyInstance.destroy();
+      const ctx = document.getElementById("chartMonthly").getContext("2d");
+      chartMonthlyInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            data: values,
+            borderColor: "#ff7f0e",
+            backgroundColor: "#ff7f0e",
+            borderWidth: 3,
+            pointRadius: 4,
+            tension: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 28, right: 20, left: 10, bottom: 5 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false },
+            datalabels: {
+              align: "top",
+              anchor: "end",
+              offset: 4,
+              color: "#333333",
+              font: { weight: "bold", size: 12 },
+              formatter: val => `${val}대`
+            }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "월별 차량대수 (대)", font: { weight: "bold" } },
+              grace: "15%"
+            }
+          }
+        }
+      });
+    }
+
+    // [탭 4 - 하단] 시간대별 주차대수 차트
+    function renderTab4Hourly() {
+      const year = document.getElementById("t4_y").value;
+      const month = document.getElementById("t4_m").value;
+      const msgEl = document.getElementById("tab4-hourly-msg");
+      const wrapEl = document.getElementById("chart-hourly-wrap");
+      const capEl = document.getElementById("chart-hourly-caption");
+
+      let filtered = mainRows.filter(r => r.정산년도 === year);
+      let periodStr = `${year}년 전체`;
+      if (month !== "전체") {
+        filtered = filtered.filter(r => r.순수월 === month);
+        periodStr = `${year}년 ${parseInt(month, 10)}월`;
+      }
+
+      if (filtered.length === 0) {
+        wrapEl.style.display = "none";
+        capEl.textContent = "";
+        msgEl.innerHTML = `<div class="alert-box alert-info">데이터가 부족하여 그래프를 그릴 수 없습니다.</div>`;
+        return;
+      }
+
+      const hourCounts = new Array(24).fill(0);
+      const uniqueDates = new Set();
+
+      filtered.forEach(r => {
+        if (r.입차일시_dt) {
+          uniqueDates.add(formatDateKey(r.입차일시_dt));
+        }
+        if (r.입차일시_dt && r.출차일시_dt) {
+          const inH = r.입차일시_dt.getHours();
+          const outH = r.출차일시_dt.getHours();
+          if (formatDateKey(r.입차일시_dt) === formatDateKey(r.출차일시_dt)) {
+            if (inH <= outH) {
+              for (let h = inH; h <= outH; h++) hourCounts[h]++;
+            }
+          } else {
+            for (let h = inH; h < 24; h++) hourCounts[h]++;
+            for (let h = 0; h <= outH; h++) hourCounts[h]++;
+          }
+        }
+      });
+
+      const daysCount = uniqueDates.size || 1;
+      const labels = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}시`);
+      const values = hourCounts.map(c => Math.round(c / daysCount));
+
+      msgEl.innerHTML = "";
+      wrapEl.style.display = "block";
+      capEl.textContent = `선택한 기간(${periodStr}) 동안 각 시간대(0시~23시)에 주차장에 머문 하루 평균 차량 대수입니다. (총 ${daysCount}일 기준)`;
+
+      if (chartHourlyInstance) chartHourlyInstance.destroy();
+      const ctx = document.getElementById("chartHourly").getContext("2d");
+      chartHourlyInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            data: values,
+            borderColor: "#1f77b4",
+            backgroundColor: "#1f77b4",
+            borderWidth: 3,
+            pointRadius: 4,
+            tension: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 28, right: 20, left: 10, bottom: 5 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false },
+            datalabels: {
+              align: "top",
+              anchor: "end",
+              offset: 4,
+              color: "#333333",
+              font: { weight: "bold", size: 12 },
+              formatter: val => `${val}대`
+            }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "하루 평균 차량대수 (대)", font: { weight: "bold" } },
+              grace: "15%"
+            }
+          }
+        }
+      });
+    }
+
+    // [탭 5] 차량조회
+    function renderTab5() {
+      const q = document.getElementById("search_car").value.trim();
+      const container = document.getElementById("tab5-content");
+      if (!q) {
+        container.innerHTML = "";
+        return;
+      }
+
+      const result = mainRows.filter(r => r.차량번호.includes(q));
+      if (result.length === 0) {
+        container.innerHTML = `<div class="alert-box alert-warn">검색된 차량이 없습니다.</div>`;
+        return;
+      }
+
+      // 월별 누적 주차시간
+      const monthlyMin = {};
+      result.forEach(r => {
+        monthlyMin[r.정산월] = (monthlyMin[r.정산월] || 0) + r.주차시간_분;
+      });
+      const monthlyKeys = Object.keys(monthlyMin).sort();
+
+      let leftHtml = `<div>
+        <div style="margin-bottom: 8px; font-weight: 600;">월별 누적 주차시간</div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>정산월</th><th>총 주차시간</th>
+        </tr></thead><tbody>`;
+
+      monthlyKeys.forEach(m => {
+        const totalMin = monthlyMin[m];
+        const hrs = Math.floor(totalMin / 60);
+        const mins = Math.floor(totalMin % 60);
+        leftHtml += `<tr><td>${m}</td><td>${hrs}시간 ${mins}분</td></tr>`;
+      });
+      leftHtml += `</tbody></table></div></div>`;
+
+      // 상세 입출차 내역
+      const sortedResult = [...result].sort((a, b) => (b.입차일시_dt?.getTime() || 0) - (a.입차일시_dt?.getTime() || 0));
+      let rightHtml = `<div>
+        <div style="margin-bottom: 8px; font-weight: 600;">상세 입출차 내역</div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>차량번호</th><th>입차일시</th><th>출차일시</th>
+          <th class="num-col">주차요금</th><th>요금종별</th><th>메모</th>
+        </tr></thead><tbody>`;
+
+      sortedResult.forEach(r => {
+        rightHtml += `<tr>
+          <td>${r.차량번호}</td>
+          <td>${r.입차일시}</td>
+          <td>${r.출차일시}</td>
+          <td class="num-col">${fmtNum(r.주차요금)}</td>
+          <td>${r.요금종별}</td>
+          <td>${r.메모}</td>
+        </tr>`;
+      });
+      rightHtml += `</tbody></table></div></div>`;
+
+      container.innerHTML = `<div class="grid-1-2">${leftHtml}${rightHtml}</div>`;
+    }
+
+    // 초기 실행
+    loadAllData();
+  </script>
+</body>
+</html>
+
