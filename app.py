@@ -106,8 +106,11 @@ if df is not None and not df.empty:
     year_list = sorted(df['정산년도'].dropna().unique().tolist(), reverse=True) if '정산년도' in df.columns else []
     
     if year_list:
-        recent_year = year_list[0]
-        recent_month_val = df[df['정산년도'] == recent_year]['순수월'].dropna().max()
+        valid_df = df[df['요금종별'].astype(str).str.contains('웹할인|완전무료', na=False)] if '요금종별' in df.columns else df
+        if valid_df.empty:
+            valid_df = df
+        recent_year = sorted(valid_df['정산년도'].dropna().unique().tolist(), reverse=True)[0]
+        recent_month_val = valid_df[valid_df['정산년도'] == recent_year]['순수월'].dropna().max()
         recent_month = f"{int(recent_month_val)}월" if pd.notna(recent_month_val) else "1월"
     else:
         recent_year = str(datetime.now().year)

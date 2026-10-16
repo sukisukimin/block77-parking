@@ -748,25 +748,34 @@
       }
     }
 
+    function getLatestYearMonth(rows) {
+      if (!rows || rows.length === 0) return null;
+      let maxYM = "";
+      for (let i = 0; i < rows.length; i++) {
+        const ym = rows[i].정산월 || rows[i].결제월 || "";
+        if (ym > maxYM) maxYM = ym;
+      }
+      if (!maxYM) return null;
+      const [y, m] = maxYM.split("-");
+      return { year: y, month: m };
+    }
+
     function initFilters() {
       const yearsSet = new Set(mainRows.map(r => r.정산년도));
       const yearList = Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
 
       const now = new Date();
-      let recentYear = yearList.length > 0 ? yearList[0] : String(now.getFullYear());
-      let maxMonthNum = 1;
+      const fallbackYear = yearList.length > 0 ? yearList[0] : String(now.getFullYear());
+      const fallbackMonth = String(now.getMonth() + 1).padStart(2, "0");
 
-      if (yearList.length > 0) {
-        const monthsInRecentYear = mainRows
-          .filter(r => r.정산년도 === recentYear)
-          .map(r => parseInt(r.순수월, 10))
-          .filter(n => !isNaN(n));
-        if (monthsInRecentYear.length > 0) {
-          maxMonthNum = Math.max(...monthsInRecentYear);
-        }
-      } else {
-        maxMonthNum = now.getMonth() + 1;
-      }
+      // 웹할인 데이터가 실제로 존재하는 마지막 연/월
+      const webRows = mainRows.filter(r => r.요금종별.includes("웹할인") && !r.요금종별.includes("완전무료"));
+      const purValidRows = purRows.filter(r => r.결제금액 > 0);
+      const latestWeb = getLatestYearMonth(webRows.length > 0 ? webRows : purValidRows) || { year: fallbackYear, month: fallbackMonth };
+
+      // 무료주차 데이터가 실제로 존재하는 마지막 연/월
+      const freeRows = mainRows.filter(r => r.요금종별.includes("완전무료"));
+      const latestFree = getLatestYearMonth(freeRows) || latestWeb;
 
       const yearOpts = yearList.map(y => ({ value: y, label: `${y}년` }));
       const monthOpts = Array.from({ length: 12 }, (_, i) => ({
@@ -774,15 +783,18 @@
         label: `${i + 1}월`
       }));
       const monthOptsWithAll = [{ value: "전체", label: "전체" }, ...monthOpts];
-      const defaultMonthVal = String(maxMonthNum).padStart(2, "0");
 
-      ["s_year", "w_year", "f_year", "stat_m_year", "t4_y"].forEach(id => {
-        populateSelect(id, yearOpts, recentYear);
-      });
-      ["w_month", "f_month"].forEach(id => {
-        populateSelect(id, monthOpts, defaultMonthVal);
-      });
-      populateSelect("t4_m", monthOptsWithAll, defaultMonthVal);
+      populateSelect("s_year", yearOpts, latestWeb.year);
+      populateSelect("stat_m_year", yearOpts, latestWeb.year);
+
+      populateSelect("w_year", yearOpts, latestWeb.year);
+      populateSelect("w_month", monthOpts, latestWeb.month);
+
+      populateSelect("f_year", yearOpts, latestFree.year);
+      populateSelect("f_month", monthOpts, latestFree.month);
+
+      populateSelect("t4_y", yearOpts, latestWeb.year);
+      populateSelect("t4_m", monthOptsWithAll, latestWeb.month);
     }
 
     function renderAll() {
