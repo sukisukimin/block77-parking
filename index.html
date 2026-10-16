@@ -327,7 +327,7 @@
       <h1>BLOCK77 주차관리</h1>
       <div class="status-area">
         <span id="last-updated">데이터 불러오는 중...</span>
-        <button class="btn-refresh" onclick="loadAllData(true)">🔄 새로고침</button>
+        <button class="btn-refresh" onclick="location.reload()">🔄 새로고침</button>
       </div>
     </div>
 
@@ -828,7 +828,6 @@
         <th class="num-col">웹할인</th>
         <th class="num-col">무료주차</th>
         <th class="num-col">카드</th>
-        <th class="num-col">현금</th>
       </tr></thead><tbody>`;
 
       list.forEach(row => {
@@ -839,7 +838,6 @@
           <td class="num-col">${fmtWon(row.웹할인)}</td>
           <td class="num-col">${fmtWon(row.무료주차)}</td>
           <td class="num-col">${fmtWon(row.카드)}</td>
-          <td class="num-col">${fmtWon(row.현금)}</td>
         </tr>`;
       });
 

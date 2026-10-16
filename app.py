@@ -137,7 +137,7 @@ if df is not None and not df.empty:
             s_year_label = st.selectbox("연도 선택", opts1, index=idx_year, key="s_year", label_visibility="collapsed") if opts1 else None
 
         if s_year_label:
-            req_cols = ['주차요금', '웹할인', '무료주차', '카드', '현금']
+            req_cols = ['주차요금', '웹할인', '무료주차', '카드']
             if all(c in df.columns for c in req_cols) and not df.empty:
                 agg_funcs = {col: 'sum' for col in req_cols}
                 agg_funcs['차량번호'] = 'count'
@@ -152,7 +152,7 @@ if df is not None and not df.empty:
                     monthly_summary = pd.DataFrame(columns=['기간', '주차대수'] + req_cols)
                 
                 if not monthly_summary.empty:
-                    display_cols = ['기간', '주차대수', '주차요금', '웹할인', '무료주차', '카드', '현금']
+                    display_cols = ['기간', '주차대수', '주차요금', '웹할인', '무료주차', '카드']
                     final_table = monthly_summary[display_cols].sort_values(by='기간', ascending=False)
                     
                     def highlight_total(s):
@@ -161,7 +161,7 @@ if df is not None and not df.empty:
                     st.dataframe(
                         final_table.style.apply(highlight_total, axis=1).format({
                             '주차대수': '{:,.0f}대', '주차요금': '{:,.0f}원', '웹할인': '{:,.0f}원', 
-                            '무료주차': '{:,.0f}원', '카드': '{:,.0f}원', '현금': '{:,.0f}원'
+                            '무료주차': '{:,.0f}원', '카드': '{:,.0f}원'
                         }),
                         hide_index=True, use_container_width=True
                     )
