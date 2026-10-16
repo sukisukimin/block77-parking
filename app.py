@@ -280,9 +280,9 @@ if df is not None and not df.empty:
                     total_free = free_cars['무료주차'].sum()
                     st.markdown(f"<div style='font-size: 16px; font-weight: normal; color: #FF4500; margin-bottom: 10px;'>선택기간 무료주차 총액: {total_free:,.0f}원 (총 {len(free_cars)}건)</div>", unsafe_allow_html=True)
                     
-                    cols_f = ['차량번호', '입차일시', '출차일시', '주차요금', '무료주차', '요금종별', '메모']
+                    cols_f = ['차량번호', '입차일시', '출차일시', '무료주차', '요금종별', '메모']
                     cols_f = [c for c in cols_f if c in df.columns]
-                    st.dataframe(free_cars[cols_f].sort_values('입차일시', ascending=False).style.format({'주차요금': '{:,.0f}원', '무료주차': '{:,.0f}원'}), hide_index=True, use_container_width=True)
+                    st.dataframe(free_cars[cols_f].sort_values('입차일시', ascending=False).style.format({'무료주차': '{:,.0f}원'}), hide_index=True, use_container_width=True)
 
             with sub_tab4:
                 mask = f_filtered_df.astype(str).apply(lambda x: x.str.contains('강제출차', na=False)).any(axis=1)

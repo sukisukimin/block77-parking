@@ -963,7 +963,7 @@
       let html3 = `<div class="summary-banner" style="color: var(--orange);">선택기간 무료주차 총액: ${fmtWon(totalFree)} (총 ${freeCars.length}건)</div>`;
       html3 += `<div class="table-wrap"><table><thead><tr>
         <th>차량번호</th><th>입차일시</th><th>출차일시</th>
-        <th class="num-col">주차요금</th><th class="num-col">무료주차</th>
+        <th class="num-col">무료주차</th>
         <th>요금종별</th><th>메모</th>
       </tr></thead><tbody>`;
 
@@ -972,7 +972,6 @@
           <td>${r.차량번호}</td>
           <td>${r.입차일시}</td>
           <td>${r.출차일시}</td>
-          <td class="num-col">${fmtWon(r.주차요금)}</td>
           <td class="num-col">${fmtWon(r.무료주차)}</td>
           <td>${r.요금종별}</td>
           <td>${r.메모}</td>
