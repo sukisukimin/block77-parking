@@ -736,20 +736,16 @@
         const memo = r["메모"] ? String(r["메모"]).trim() : "";
         const carNo = r["차량번호"] !== undefined && r["차량번호"] !== null ? String(r["차량번호"]).trim() : "";
 
-        // 주차시간(분) 및 표시용 주차시간 문자열
+        // 주차시간(분) 및 표시용 주차시간 문자열 (24시간 초과 시에도 정확한 누적 시간 표시)
         let durationMin = 0;
+        let parkingTimeStr = "";
         if (inDt && outDt) {
           durationMin = (outDt.getTime() - inDt.getTime()) / 60000;
-          if (isNaN(durationMin)) durationMin = 0;
-        }
-        let parkingTimeStr = r["주차시간"] !== undefined && r["주차시간"] !== null ? String(r["주차시간"]).trim() : "";
-        const tm = parkingTimeStr.match(/^Date\(\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*(\d+)\s*,\s*(\d+)/);
-        if (tm) {
-          parkingTimeStr = `${parseInt(tm[1], 10)}:${String(parseInt(tm[2], 10)).padStart(2, "0")}`;
-        }
-        if (!parkingTimeStr && inDt && outDt && durationMin >= 0) {
+          if (isNaN(durationMin) || durationMin < 0) durationMin = 0;
           const totalMins = Math.floor(durationMin);
           parkingTimeStr = `${Math.floor(totalMins / 60)}:${String(totalMins % 60).padStart(2, "0")}`;
+        } else if (r["주차시간"] !== undefined && r["주차시간"] !== null) {
+          parkingTimeStr = String(r["주차시간"]).trim();
         }
 
         // 웹할인 및 무료주차 추출 (app.py extract_discounts 동일 로직)
