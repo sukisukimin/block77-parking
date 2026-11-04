@@ -210,6 +210,34 @@
       font-variant-numeric: tabular-nums;
     }
 
+    th.sortable-th {
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.15s;
+    }
+
+    th.sortable-th:hover {
+      background-color: #e2e8f0;
+    }
+
+    .th-inner {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .sort-arrows {
+      display: inline-flex;
+      flex-direction: column;
+      line-height: 0.8;
+      font-size: 9px;
+      color: #cbd5e1;
+    }
+
+    .sort-arrows .arr.active {
+      color: var(--primary);
+    }
+
     .highlight-fee {
       background-color: #fff3cd !important;
       color: #856404 !important;
@@ -452,6 +480,53 @@
     let purRows = [];
     let chartMonthlyInstance = null;
     let chartHourlyInstance = null;
+
+    const sortState = {
+      sub_tab1: { key: "입차일시", dir: "desc" },
+      sub_tab2: { key: "총결제금액", dir: "desc" },
+      sub_tab3: { key: "입차일시", dir: "desc" },
+      sub_tab4: { key: "입차일시", dir: "desc" }
+    };
+
+    function toggleSort(tabId, key) {
+      const cur = sortState[tabId];
+      if (cur.key === key) {
+        cur.dir = cur.dir === "desc" ? "asc" : "desc";
+      } else {
+        cur.key = key;
+        cur.dir = "desc";
+      }
+      if (tabId === "sub_tab1" || tabId === "sub_tab2") renderTab2();
+      if (tabId === "sub_tab3" || tabId === "sub_tab4") renderTab3();
+    }
+
+    function renderSortTh(tabId, key, label, isNum = false) {
+      const cur = sortState[tabId];
+      const isAsc = cur.key === key && cur.dir === "asc";
+      const isDesc = cur.key === key && cur.dir === "desc";
+      const cls = isNum ? "sortable-th num-col" : "sortable-th";
+      return `<th class="${cls}" onclick="toggleSort('${tabId}', '${key}')"><span class="th-inner">${label}<span class="sort-arrows"><span class="arr ${isAsc ? "active" : ""}">▲</span><span class="arr ${isDesc ? "active" : ""}">▼</span></span></span></th>`;
+    }
+
+    function getRowSortVal(r, key) {
+      switch (key) {
+        case "입차일시": return r.입차일시_dt ? r.입차일시_dt.getTime() : 0;
+        case "출차일시": return r.출차일시_dt ? r.출차일시_dt.getTime() : 0;
+        case "주차시간": return r.주차시간_분 || 0;
+        case "주차요금": return r.주차요금 || 0;
+        case "웹할인": return r.웹할인 || 0;
+        case "무료주차": return r.무료주차 || 0;
+        case "총결제금액": return r.총결제금액 || 0;
+        case "잔여량": return r.잔여량 || 0;
+        default: return 0;
+      }
+    }
+
+    function sortRows(rows, tabId) {
+      const { key, dir } = sortState[tabId];
+      const mul = dir === "asc" ? 1 : -1;
+      return [...rows].sort((a, b) => (getRowSortVal(a, key) - getRowSortVal(b, key)) * mul);
+    }
 
     // 탭 전환 이벤트 설정
     function setupTabs(containerId, panelSelectorScope) {
@@ -879,15 +954,19 @@
 
       // 1) 사용내역
       const sub1 = document.getElementById("sub_tab1");
-      const webCars = mainRows
-        .filter(r => r.정산월 === targetMonth && r.요금종별.includes("웹할인") && !r.요금종별.includes("완전무료"))
-        .sort((a, b) => (b.입차일시_dt?.getTime() || 0) - (a.입차일시_dt?.getTime() || 0));
+      const webCars = sortRows(
+        mainRows.filter(r => r.정산월 === targetMonth && r.요금종별.includes("웹할인") && !r.요금종별.includes("완전무료")),
+        "sub_tab1"
+      );
 
       const totalWeb = webCars.reduce((acc, r) => acc + r.웹할인, 0);
       let html1 = `<div class="summary-banner">선택기간 사용내역 총액: ${fmtWon(totalWeb)} (총 ${webCars.length}건)</div>`;
       html1 += `<div class="table-wrap"><table><thead><tr>
-        <th>차량번호</th><th>입차일시</th><th>출차일시</th>
-        <th class="num-col">주차요금</th><th class="num-col">웹할인</th>
+        <th>차량번호</th>
+        ${renderSortTh("sub_tab1", "입차일시", "입차일시")}
+        ${renderSortTh("sub_tab1", "출차일시", "출차일시")}
+        ${renderSortTh("sub_tab1", "주차요금", "주차요금", true)}
+        ${renderSortTh("sub_tab1", "웹할인", "웹할인", true)}
         <th>요금종별</th><th>메모</th>
       </tr></thead><tbody>`;
 
@@ -933,9 +1012,10 @@
         byCompany[r.이름].잔여량 = r.결제후잔여량;
       });
 
-      const purTable = Object.values(byCompany)
-        .filter(r => r.총결제금액 > 0)
-        .sort((a, b) => b.총결제금액 - a.총결제금액);
+      const purTable = sortRows(
+        Object.values(byCompany).filter(r => r.총결제금액 > 0),
+        "sub_tab2"
+      );
       if (purTable.length === 0) {
         sub2.innerHTML = `<div class="alert-box alert-info">${year}년 ${monthLabel}의 구매내역 데이터가 없습니다.</div>`;
         return;
@@ -945,8 +1025,8 @@
       let html2 = `<div class="summary-banner">선택기간 구매 결제 총액: ${fmtWon(totalPay)}</div>`;
       html2 += `<div class="table-wrap"><table><thead><tr>
         <th>업체명</th>
-        <th class="num-col">${monthLabel} 총 결제금액</th>
-        <th class="num-col">결제후 잔여량</th>
+        ${renderSortTh("sub_tab2", "총결제금액", `${monthLabel} 총 결제금액`, true)}
+        ${renderSortTh("sub_tab2", "잔여량", "결제후 잔여량", true)}
       </tr></thead><tbody>`;
 
       purTable.forEach(r => {
@@ -968,15 +1048,19 @@
 
       // 1) 무료주차
       const sub3 = document.getElementById("sub_tab3");
-      const freeCars = filtered
-        .filter(r => r.요금종별.includes("완전무료"))
-        .sort((a, b) => (b.입차일시_dt?.getTime() || 0) - (a.입차일시_dt?.getTime() || 0));
+      const freeCars = sortRows(
+        filtered.filter(r => r.요금종별.includes("완전무료")),
+        "sub_tab3"
+      );
 
       const totalFree = freeCars.reduce((acc, r) => acc + r.무료주차, 0);
       let html3 = `<div class="summary-banner">선택기간 무료주차 총액: ${fmtWon(totalFree)} (총 ${freeCars.length}건)</div>`;
       html3 += `<div class="table-wrap"><table><thead><tr>
-        <th>차량번호</th><th>입차일시</th><th>출차일시</th><th>주차시간</th>
-        <th class="num-col">무료주차</th>
+        <th>차량번호</th>
+        ${renderSortTh("sub_tab3", "입차일시", "입차일시")}
+        ${renderSortTh("sub_tab3", "출차일시", "출차일시")}
+        ${renderSortTh("sub_tab3", "주차시간", "주차시간")}
+        ${renderSortTh("sub_tab3", "무료주차", "무료주차", true)}
         <th>요금종별</th><th>메모</th>
       </tr></thead><tbody>`;
 
@@ -996,15 +1080,20 @@
 
       // 2) 강제출차
       const sub4 = document.getElementById("sub_tab4");
-      const forcedCars = filtered
-        .filter(r => r.강제출차여부)
-        .sort((a, b) => (b.입차일시_dt?.getTime() || 0) - (a.입차일시_dt?.getTime() || 0));
+      const forcedCars = sortRows(
+        filtered.filter(r => r.강제출차여부),
+        "sub_tab4"
+      );
 
       let html4 = `<div class="summary-banner">선택기간 강제출차 총 ${forcedCars.length}건의 기록이 있습니다.</div>`;
       if (forcedCars.length > 0) {
         html4 += `<div class="table-wrap"><table><thead><tr>
-          <th>차량번호</th><th>입차일시</th><th>출차일시</th><th>주차시간</th>
-          <th class="num-col">주차요금</th><th>요금종별</th><th>메모</th>
+          <th>차량번호</th>
+          ${renderSortTh("sub_tab4", "입차일시", "입차일시")}
+          ${renderSortTh("sub_tab4", "출차일시", "출차일시")}
+          ${renderSortTh("sub_tab4", "주차시간", "주차시간")}
+          ${renderSortTh("sub_tab4", "주차요금", "주차요금", true)}
+          <th>요금종별</th><th>메모</th>
         </tr></thead><tbody>`;
         forcedCars.forEach(r => {
           html4 += `<tr>
