@@ -81,6 +81,7 @@ if df is not None and not df.empty:
     if '출차일시' in df.columns and '입차일시' in df.columns:
         df['주차시간(분)'] = (df['출차일시'] - df['입차일시']).dt.total_seconds() / 60 
         df['주차시간(분)'] = df['주차시간(분)'].fillna(0)
+        df['주차시간'] = df['주차시간(분)'].apply(lambda x: f"{int(x//60)}시간 {int(x%60)}분")
     
     def extract_discounts(row):
         val = str(row.get('요금종별', ''))
@@ -280,7 +281,7 @@ if df is not None and not df.empty:
                     total_free = free_cars['무료주차'].sum()
                     st.markdown(f"<div style='font-size: 16.5px; font-weight: bold; color: #ff4b4b; margin-bottom: 10px;'>선택기간 무료주차 총액: {total_free:,.0f}원 (총 {len(free_cars)}건)</div>", unsafe_allow_html=True)
                     
-                    cols_f = ['차량번호', '입차일시', '출차일시', '무료주차', '요금종별', '메모']
+                    cols_f = ['차량번호', '입차일시', '출차일시', '주차시간', '무료주차', '요금종별', '메모']
                     cols_f = [c for c in cols_f if c in df.columns]
                     st.dataframe(free_cars[cols_f].sort_values('입차일시', ascending=False).style.format({'무료주차': '{:,.0f}원'}), hide_index=True, use_container_width=True)
 
@@ -289,7 +290,7 @@ if df is not None and not df.empty:
                 forced_exit = f_filtered_df[mask]
                 st.markdown(f"<div style='font-size: 16.5px; font-weight: bold; color: #ff4b4b; margin-bottom: 10px;'>선택기간 강제출차 총 {len(forced_exit)}건의 기록이 있습니다.</div>", unsafe_allow_html=True)
                 if not forced_exit.empty:
-                    cols3 = ['차량번호', '입차일시', '출차일시', '주차요금', '요금종별', '메모']
+                    cols3 = ['차량번호', '입차일시', '출차일시', '주차시간', '주차요금', '요금종별', '메모']
                     cols3 = [c for c in cols3 if c in df.columns]
                     st.dataframe(forced_exit[cols3].sort_values('입차일시', ascending=False).style.format({'주차요금': '{:,.0f}원'}), hide_index=True, use_container_width=True)
 

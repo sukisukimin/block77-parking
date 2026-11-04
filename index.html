@@ -582,6 +582,8 @@
               const cell = cells[i];
               if (!cell || (cell.v === null && cell.f === undefined)) {
                 item[colName] = "";
+              } else if (colName === "주차시간" && cell.f !== undefined && cell.f !== null) {
+                item[colName] = String(cell.f).trim();
               } else {
                 item[colName] = cell.v !== null && cell.v !== undefined ? cell.v : cell.f;
               }
@@ -659,11 +661,16 @@
         const memo = r["메모"] ? String(r["메모"]).trim() : "";
         const carNo = r["차량번호"] !== undefined && r["차량번호"] !== null ? String(r["차량번호"]).trim() : "";
 
-        // 주차시간(분)
+        // 주차시간(분) 및 표시용 주차시간 문자열
         let durationMin = 0;
         if (inDt && outDt) {
           durationMin = (outDt.getTime() - inDt.getTime()) / 60000;
           if (isNaN(durationMin)) durationMin = 0;
+        }
+        let parkingTimeStr = r["주차시간"] !== undefined && r["주차시간"] !== null ? String(r["주차시간"]).trim() : "";
+        const tm = parkingTimeStr.match(/^Date\(\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*(\d+)\s*,\s*(\d+)/);
+        if (tm) {
+          parkingTimeStr = `${parseInt(tm[1], 10)}:${String(parseInt(tm[2], 10)).padStart(2, "0")}`;
         }
 
         // 웹할인 및 무료주차 추출 (app.py extract_discounts 동일 로직)
@@ -695,6 +702,7 @@
           출차일시_dt: outDt,
           입차일시: inDt ? formatDateTime(inDt) : String(r["입차일시"] || ""),
           출차일시: outDt ? formatDateTime(outDt) : String(r["출차일시"] || ""),
+          주차시간: parkingTimeStr,
           주차요금: fee,
           현금: cash,
           카드: card,
@@ -963,7 +971,7 @@
       const totalFree = freeCars.reduce((acc, r) => acc + r.무료주차, 0);
       let html3 = `<div class="summary-banner">선택기간 무료주차 총액: ${fmtWon(totalFree)} (총 ${freeCars.length}건)</div>`;
       html3 += `<div class="table-wrap"><table><thead><tr>
-        <th>차량번호</th><th>입차일시</th><th>출차일시</th>
+        <th>차량번호</th><th>입차일시</th><th>출차일시</th><th>주차시간</th>
         <th class="num-col">무료주차</th>
         <th>요금종별</th><th>메모</th>
       </tr></thead><tbody>`;
@@ -973,6 +981,7 @@
           <td>${r.차량번호}</td>
           <td>${r.입차일시}</td>
           <td>${r.출차일시}</td>
+          <td>${r.주차시간}</td>
           <td class="num-col">${fmtWon(r.무료주차)}</td>
           <td>${r.요금종별}</td>
           <td>${r.메모}</td>
@@ -990,7 +999,7 @@
       let html4 = `<div class="summary-banner">선택기간 강제출차 총 ${forcedCars.length}건의 기록이 있습니다.</div>`;
       if (forcedCars.length > 0) {
         html4 += `<div class="table-wrap"><table><thead><tr>
-          <th>차량번호</th><th>입차일시</th><th>출차일시</th>
+          <th>차량번호</th><th>입차일시</th><th>출차일시</th><th>주차시간</th>
           <th class="num-col">주차요금</th><th>요금종별</th><th>메모</th>
         </tr></thead><tbody>`;
         forcedCars.forEach(r => {
@@ -998,6 +1007,7 @@
             <td>${r.차량번호}</td>
             <td>${r.입차일시}</td>
             <td>${r.출차일시}</td>
+            <td>${r.주차시간}</td>
             <td class="num-col">${fmtWon(r.주차요금)}</td>
             <td>${r.요금종별}</td>
             <td>${r.메모}</td>
