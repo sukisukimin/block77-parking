@@ -672,6 +672,10 @@
         if (tm) {
           parkingTimeStr = `${parseInt(tm[1], 10)}:${String(parseInt(tm[2], 10)).padStart(2, "0")}`;
         }
+        if (!parkingTimeStr && inDt && outDt && durationMin >= 0) {
+          const totalMins = Math.floor(durationMin);
+          parkingTimeStr = `${Math.floor(totalMins / 60)}:${String(totalMins % 60).padStart(2, "0")}`;
+        }
 
         // 웹할인 및 무료주차 추출 (app.py extract_discounts 동일 로직)
         let webDiscount = 0;
